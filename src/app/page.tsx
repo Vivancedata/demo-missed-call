@@ -20,6 +20,58 @@ const URGENCY_LABEL: Record<TriagedCall["urgency"], string> = {
   whenever: "Whenever",
 };
 
+/**
+ * The waveform is this demo's signature. All three VivanceData demos share one
+ * shell -- black ground, green mono eyebrow, a paste box -- which made them
+ * indistinguishable from each other in a tab strip. The mark names the input
+ * (a voicemail), and `--chart-1` tints it: the chart ramp is the same
+ * green-to-cyan family as the brand and the hero mesh, so the three demos read
+ * as siblings rather than as three unrelated pages.
+ */
+const Waveform = () => (
+  <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0 text-chart-1" aria-hidden="true">
+    <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M2.5 8.5v3M6 5.5v9M9.5 3v14M13 6.5v7M16.5 9v2" />
+    </g>
+  </svg>
+);
+
+const Spinner = () => (
+  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 animate-spin" fill="none" aria-hidden="true">
+    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.35" strokeWidth="2" />
+    <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+/**
+ * The primary action carries the brand green the eyebrow already uses.
+ *
+ * It used to be `bg-primary ... disabled:opacity-50`. In dark mode `--primary`
+ * is a near-white pill, so at 50% on a black sheet it landed as flat mid-grey --
+ * and because the page loads with an empty box, that half-dead grey was the
+ * FIRST thing anyone saw. The control was not broken, but it looked it.
+ *
+ * Five states, each distinguishable from the others by more than opacity:
+ *   idle      solid brand green fill
+ *   hover     brightened
+ *   active    dimmed, nudged 1px down
+ *   focus     a light ring, offset clear of the card
+ *   busy      still green but dimmed, with a spinner -- work in flight
+ *   disabled  hollow: hairline border, no fill, muted label, plus a line of
+ *             copy saying what would turn it on
+ */
+const ACTION_BASE =
+  "mt-4 inline-flex min-h-10 items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-card";
+const ACTION_IDLE =
+  "bg-brand text-brand-foreground hover:brightness-110 active:translate-y-px active:brightness-95";
+const ACTION_BUSY = "cursor-progress bg-brand/70 text-brand-foreground";
+const ACTION_OFF = "cursor-not-allowed border border-border bg-transparent text-mute";
+
+/* Sample chips are real buttons and were already tabbable, but had no focus
+ * style at all -- keyboard users could not see where they were. */
+const CHIP =
+  "rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card";
+
 export default function Home() {
   const [text, setText] = useState("");
   const [call, setCall] = useState<TriagedCall | null>(null);
@@ -46,11 +98,22 @@ export default function Home() {
     }
   }
 
+  const hasInput = text.trim().length > 0;
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="font-mono text-xs uppercase tracking-widest text-brand">
-        VivanceData demo — calls after you close
-      </p>
+    <>
+      {/* flex-1 + justify-center: the card used to sit in the top third with
+          the rest of the viewport left as void. Centring it and pinning the
+          footer as a band makes the page look composed rather than truncated.
+          `flex-1` in a column will not shrink below its content, so a long
+          result still lays out top-down and scrolls normally. */}
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-6 py-16">
+      <div className="flex items-center gap-2.5">
+        <Waveform />
+        <p className="font-mono text-xs uppercase tracking-widest text-brand">
+          VivanceData demo — calls after you close
+        </p>
+      </div>
       <h1 className="mt-4 text-display text-balance">
         The 9pm voicemail, triaged by morning
       </h1>
@@ -62,16 +125,16 @@ export default function Home() {
         than a flagged one. Nothing you submit is stored.
       </p>
 
-      <div className="mt-10 rounded-md border border-border bg-card p-6">
+      <div className="mt-10 rounded-md border border-t-2 border-border border-t-chart-1/60 bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
           <button
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            className={CHIP}
             onClick={() => { setText(SAMPLE_NO_HEAT); setCall(null); }}
           >
             Sample: 9pm no-heat call
           </button>
           <button
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            className={CHIP}
             onClick={() => { setText(SAMPLE_QUOTE); setCall(null); }}
           >
             Sample: quote request
@@ -86,12 +149,19 @@ export default function Home() {
         />
 
         <button
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          disabled={busy || text.trim().length === 0}
+          className={`${ACTION_BASE} ${busy ? ACTION_BUSY : hasInput ? ACTION_IDLE : ACTION_OFF}`}
+          disabled={busy || !hasInput}
+          aria-busy={busy}
           onClick={triage}
         >
+          {busy ? <Spinner /> : null}
           {busy ? "Listening…" : "Triage the call"}
         </button>
+        {!busy && !hasInput ? (
+          <p className="mt-3 text-sm text-mute">
+            Paste a transcript, or take one of the samples above, and this turns on.
+          </p>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </div>
 
@@ -145,13 +215,20 @@ export default function Home() {
         </section>
       ) : null}
 
-      <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
-        Built by{" "}
-        <a className="text-brand underline-offset-4 hover:underline" href="https://www.vivancedata.com">
-          VivanceData
-        </a>{" "}
-        — in production this runs on your phone line, not a paste box.
+      </main>
+
+      <footer className="border-t border-border bg-card">
+        <div className="mx-auto max-w-3xl px-6 py-8 text-sm text-muted-foreground">
+          Built by{" "}
+          <a
+            className="rounded-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            href="https://www.vivancedata.com"
+          >
+            VivanceData
+          </a>{" "}
+          — in production this runs on your phone line, not a paste box.
+        </div>
       </footer>
-    </main>
+    </>
   );
 }
