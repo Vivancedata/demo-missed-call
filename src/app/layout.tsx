@@ -9,7 +9,7 @@ const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", dis
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Missed-call demo — VivanceData",
+  title: "Missed-call demo — Vivancedata",
   description:
     "The 9pm voicemail becomes a triaged, bookable job instead of a lost customer. Browser simulation of the phone-line service.",
 };
