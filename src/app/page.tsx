@@ -46,6 +46,8 @@ export default function Home() {
     }
   }
 
+  const disabled = busy || text.trim().length === 0;
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <p className="text-label uppercase text-mute">
@@ -86,12 +88,18 @@ export default function Home() {
         />
 
         <button
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          disabled={busy || text.trim().length === 0}
+          className={`mt-4 inline-flex min-h-11 items-center rounded-md px-4 text-label uppercase transition-colors ${disabled
+            ? "border border-rule text-mute"
+            : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
+          disabled={disabled}
           onClick={triage}
         >
           {busy ? "Listening…" : "Triage the call"}
         </button>
+        {/* The other half of a hollow control is saying what fills it. */}
+        {disabled && !busy ? (
+          <p className="mt-3 text-caption text-mute">Paste a transcript, or pick one of the samples above.</p>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </div>
 
