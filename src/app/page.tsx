@@ -49,7 +49,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <p className="font-mono text-xs uppercase tracking-widest text-brand">
-        VivanceData demo — calls after you close
+        Vivancedata demo — calls after you close
       </p>
       <h1 className="mt-4 text-display text-balance">
         The 9pm voicemail, triaged by morning
@@ -148,7 +148,7 @@ export default function Home() {
       <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
         Built by{" "}
         <a className="text-brand underline-offset-4 hover:underline" href="https://www.vivancedata.com">
-          VivanceData
+          Vivancedata
         </a>{" "}
         — in production this runs on your phone line, not a paste box.
       </footer>
