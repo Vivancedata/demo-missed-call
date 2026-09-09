@@ -48,10 +48,10 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="font-mono text-xs uppercase tracking-widest text-brand">
+      <p className="text-label uppercase text-mute">
         Vivancedata demo — calls after you close
       </p>
-      <h1 className="mt-4 text-display text-balance">
+      <h1 className="mt-4 font-display text-serif-lg text-balance">
         The 9pm voicemail, triaged by morning
       </h1>
       <p className="mt-4 max-w-prose text-muted-foreground">
@@ -132,7 +132,7 @@ export default function Home() {
 
           {call.flagged_as_unclear.length > 0 ? (
             <div className="mt-6 rounded-md border border-border p-4">
-              <h3 className="font-mono text-xs uppercase tracking-wider text-brand">
+              <h3 className="text-label uppercase text-foreground">
                 Flagged, not guessed
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
@@ -147,7 +147,7 @@ export default function Home() {
 
       <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
         Built by{" "}
-        <a className="text-brand underline-offset-4 hover:underline" href="https://www.vivancedata.com">
+        <a className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current" href="https://www.vivancedata.com">
           Vivancedata
         </a>{" "}
         — in production this runs on your phone line, not a paste box.
