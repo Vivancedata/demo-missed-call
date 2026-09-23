@@ -81,6 +81,9 @@ export default function Home() {
         </div>
 
         <textarea
+          name="transcript"
+          aria-label="Voicemail transcript"
+          autoComplete="off"
           className="mt-4 h-44 w-full resize-y rounded-md border border-border bg-background p-4 font-mono text-sm"
           placeholder="Paste a voicemail transcript here…"
           value={text}
@@ -92,15 +95,30 @@ export default function Home() {
             ? "border border-rule text-mute"
             : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
           disabled={disabled}
+          aria-busy={busy}
           onClick={triage}
         >
-          {busy ? "Listening…" : "Triage the call"}
+          {busy ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="mr-2 inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+              />
+              Listening…
+            </>
+          ) : (
+            "Triage the call"
+          )}
         </button>
         {/* The other half of a hollow control is saying what fills it. */}
         {disabled && !busy ? (
           <p className="mt-3 text-caption text-mute">Paste a transcript, or pick one of the samples above.</p>
         ) : null}
-        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+        {/* Always mounted so screen readers announce the error when it lands. */}
+        <div aria-live="polite">
+          {error ? <p className="mt-3 break-words text-sm text-destructive">{error}</p> : null}
+          {call ? <p className="sr-only">Call triaged. The result is below.</p> : null}
+        </div>
       </div>
 
       {call ? (
@@ -120,30 +138,30 @@ export default function Home() {
               ["Callback", call.callback_number],
               ["Location", call.address_or_location],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="min-w-0">
                 <dt className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
-                <dd className="mt-1">{value || "—"}</dd>
+                <dd className="mt-1 break-words">{value || "—"}</dd>
               </div>
             ))}
           </dl>
 
-          <p className="mt-6 text-sm">{call.issue_summary}</p>
+          <p className="mt-6 break-words text-sm">{call.issue_summary}</p>
 
           {call.suggested_reply ? (
             <div className="mt-6 rounded-md border border-border p-4">
-              <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 Reply, ready to send
-              </h3>
-              <p className="mt-2 text-sm">{call.suggested_reply}</p>
+              </h2>
+              <p className="mt-2 break-words text-sm">{call.suggested_reply}</p>
             </div>
           ) : null}
 
           {call.flagged_as_unclear.length > 0 ? (
             <div className="mt-6 rounded-md border border-border p-4">
-              <h3 className="text-label uppercase text-foreground">
+              <h2 className="text-label uppercase text-foreground">
                 Flagged, not guessed
-              </h3>
-              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              </h2>
+              <ul className="mt-2 space-y-1 break-words text-sm text-muted-foreground">
                 {call.flagged_as_unclear.map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
