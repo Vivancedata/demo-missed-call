@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { SAMPLE_NO_HEAT, SAMPLE_QUOTE } from "@/lib/samples";
 import type { TriagedCall } from "@/lib/schema";
 
@@ -20,53 +20,75 @@ const URGENCY_LABEL: Record<TriagedCall["urgency"], string> = {
   whenever: "Whenever",
 };
 
+// Static markup, hoisted so a keystroke in the controlled textarea does not
+// rebuild it (react-best-practices: rendering-hoist-jsx).
+const intro = (
+  <>
+    <p className="text-label uppercase text-mute">
+      <span translate="no">Vivancedata</span> demo — calls after you close
+    </p>
+    <h1 className="mt-4 font-display text-serif-lg text-balance">
+      The 9pm voicemail, triaged by morning
+    </h1>
+    <p className="mt-4 max-w-prose text-muted-foreground">
+      In production this sits behind your business number. This page is the
+      simulation: paste a voicemail transcript and see what the dispatcher
+      sees — intent, urgency, callback details, and a reply ready to send.
+      Garbled parts get flagged, because a wrong callback number is worse
+      than a flagged one. Nothing you submit is stored.
+    </p>
+  </>
+);
+
+const footer = (
+  <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
+    Built by{" "}
+    <a
+      className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+      href="https://www.vivancedata.com"
+      translate="no"
+    >
+      Vivancedata
+    </a>{" "}
+    — in production this runs on your phone line, not a paste box.
+  </footer>
+);
+
 export default function Home() {
   const [text, setText] = useState("");
   const [call, setCall] = useState<TriagedCall | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, startTriage] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  async function triage() {
-    setBusy(true);
+  function triage() {
     setError(null);
     setCall(null);
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      // A proxy timeout returns HTML, not JSON; fall through to the
-      // status-based message instead of surfacing a parser error.
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.record) {
-        throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+    startTriage(async () => {
+      try {
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        // A proxy timeout returns HTML, not JSON; fall through to the
+        // status-based message instead of surfacing a parser error.
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.record) {
+          throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+        }
+        startTriage(() => setCall(data.record));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Triage failed. Try again in a moment.";
+        startTriage(() => setError(message));
       }
-      setCall(data.record);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Triage failed. Try again in a moment.");
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   const disabled = busy || text.trim().length === 0;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="text-label uppercase text-mute">
-        <span translate="no">Vivancedata</span> demo — calls after you close
-      </p>
-      <h1 className="mt-4 font-display text-serif-lg text-balance">
-        The 9pm voicemail, triaged by morning
-      </h1>
-      <p className="mt-4 max-w-prose text-muted-foreground">
-        In production this sits behind your business number. This page is the
-        simulation: paste a voicemail transcript and see what the dispatcher
-        sees — intent, urgency, callback details, and a reply ready to send.
-        Garbled parts get flagged, because a wrong callback number is worse
-        than a flagged one. Nothing you submit is stored.
-      </p>
+      {intro}
 
       <div className="mt-10 rounded-md border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -175,17 +197,7 @@ export default function Home() {
         </section>
       ) : null}
 
-      <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
-        Built by{" "}
-        <a
-          className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
-          href="https://www.vivancedata.com"
-          translate="no"
-        >
-          Vivancedata
-        </a>{" "}
-        — in production this runs on your phone line, not a paste box.
-      </footer>
+      {footer}
     </main>
   );
 }
