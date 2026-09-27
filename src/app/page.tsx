@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { SAMPLE_NO_HEAT, SAMPLE_QUOTE } from "@/lib/samples";
 import type { TriagedCall } from "@/lib/schema";
 
@@ -20,49 +20,75 @@ const URGENCY_LABEL: Record<TriagedCall["urgency"], string> = {
   whenever: "Whenever",
 };
 
+// Static markup, hoisted so a keystroke in the controlled textarea does not
+// rebuild it (react-best-practices: rendering-hoist-jsx).
+const intro = (
+  <>
+    <p className="text-label uppercase text-mute">
+      <span translate="no">Vivancedata</span> demo — calls after you close
+    </p>
+    <h1 className="mt-4 font-display text-serif-lg text-balance">
+      The 9pm voicemail, triaged by morning
+    </h1>
+    <p className="mt-4 max-w-prose text-muted-foreground">
+      In production this sits behind your business number. This page is the
+      simulation: paste a voicemail transcript and see what the dispatcher
+      sees — intent, urgency, callback details, and a reply ready to send.
+      Garbled parts get flagged, because a wrong callback number is worse
+      than a flagged one. Nothing you submit is stored.
+    </p>
+  </>
+);
+
+const footer = (
+  <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
+    Built by{" "}
+    <a
+      className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+      href="https://www.vivancedata.com"
+      translate="no"
+    >
+      Vivancedata
+    </a>{" "}
+    — in production this runs on your phone line, not a paste box.
+  </footer>
+);
+
 export default function Home() {
   const [text, setText] = useState("");
   const [call, setCall] = useState<TriagedCall | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, startTriage] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  async function triage() {
-    setBusy(true);
+  function triage() {
     setError(null);
     setCall(null);
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
-      setCall(data.record);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Triage failed.");
-    } finally {
-      setBusy(false);
-    }
+    startTriage(async () => {
+      try {
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        // A proxy timeout returns HTML, not JSON; fall through to the
+        // status-based message instead of surfacing a parser error.
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.record) {
+          throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+        }
+        startTriage(() => setCall(data.record));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Triage failed. Try again in a moment.";
+        startTriage(() => setError(message));
+      }
+    });
   }
 
   const disabled = busy || text.trim().length === 0;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="text-label uppercase text-mute">
-        Vivancedata demo — calls after you close
-      </p>
-      <h1 className="mt-4 font-display text-serif-lg text-balance">
-        The 9pm voicemail, triaged by morning
-      </h1>
-      <p className="mt-4 max-w-prose text-muted-foreground">
-        In production this sits behind your business number. This page is the
-        simulation: paste a voicemail transcript and see what the dispatcher
-        sees — intent, urgency, callback details, and a reply ready to send.
-        Garbled parts get flagged, because a wrong callback number is worse
-        than a flagged one. Nothing you submit is stored.
-      </p>
+      {intro}
 
       <div className="mt-10 rounded-md border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -81,6 +107,9 @@ export default function Home() {
         </div>
 
         <textarea
+          name="transcript"
+          aria-label="Voicemail transcript"
+          autoComplete="off"
           className="mt-4 h-44 w-full resize-y rounded-md border border-border bg-background p-4 font-mono text-sm"
           placeholder="Paste a voicemail transcript here…"
           value={text}
@@ -92,15 +121,30 @@ export default function Home() {
             ? "border border-rule text-mute"
             : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
           disabled={disabled}
+          aria-busy={busy}
           onClick={triage}
         >
-          {busy ? "Listening…" : "Triage the call"}
+          {busy ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="mr-2 inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+              />
+              Listening…
+            </>
+          ) : (
+            "Triage the call"
+          )}
         </button>
         {/* The other half of a hollow control is saying what fills it. */}
         {disabled && !busy ? (
           <p className="mt-3 text-caption text-mute">Paste a transcript, or pick one of the samples above.</p>
         ) : null}
-        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+        {/* Always mounted so screen readers announce the error when it lands. */}
+        <div aria-live="polite">
+          {error ? <p className="mt-3 break-words text-sm text-destructive">{error}</p> : null}
+          {call ? <p className="sr-only">Call triaged. The result is below.</p> : null}
+        </div>
       </div>
 
       {call ? (
@@ -120,30 +164,30 @@ export default function Home() {
               ["Callback", call.callback_number],
               ["Location", call.address_or_location],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="min-w-0">
                 <dt className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
-                <dd className="mt-1">{value || "—"}</dd>
+                <dd className="mt-1 break-words">{value || "—"}</dd>
               </div>
             ))}
           </dl>
 
-          <p className="mt-6 text-sm">{call.issue_summary}</p>
+          <p className="mt-6 break-words text-sm">{call.issue_summary}</p>
 
           {call.suggested_reply ? (
             <div className="mt-6 rounded-md border border-border p-4">
-              <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 Reply, ready to send
-              </h3>
-              <p className="mt-2 text-sm">{call.suggested_reply}</p>
+              </h2>
+              <p className="mt-2 break-words text-sm">{call.suggested_reply}</p>
             </div>
           ) : null}
 
           {call.flagged_as_unclear.length > 0 ? (
             <div className="mt-6 rounded-md border border-border p-4">
-              <h3 className="text-label uppercase text-foreground">
+              <h2 className="text-label uppercase text-foreground">
                 Flagged, not guessed
-              </h3>
-              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              </h2>
+              <ul className="mt-2 space-y-1 break-words text-sm text-muted-foreground">
                 {call.flagged_as_unclear.map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
@@ -153,13 +197,7 @@ export default function Home() {
         </section>
       ) : null}
 
-      <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
-        Built by{" "}
-        <a className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current" href="https://www.vivancedata.com">
-          Vivancedata
-        </a>{" "}
-        — in production this runs on your phone line, not a paste box.
-      </footer>
+      {footer}
     </main>
   );
 }
