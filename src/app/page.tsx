@@ -36,6 +36,8 @@ const intro = (
       sees — intent, urgency, callback details, and a reply ready to send.
       Garbled parts get flagged, because a wrong callback number is worse
       than a flagged one. Nothing you submit is stored.
+      Submissions are sent to Anthropic’s API for processing and aren’t
+      retained by Vivancedata. Don’t upload real customer data.
     </p>
   </>
 );
