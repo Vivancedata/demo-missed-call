@@ -28,7 +28,7 @@ npm run dev                  # http://localhost:3000
 
 ## How it works
 
-One route handler sends the transcript to Claude (`claude-opus-5`) with a
+One route handler sends the transcript to Claude (`claude-haiku-5-5`) with a
 JSON Schema enforced via `output_config`, so the response always parses
 against `src/lib/schema.ts`. "When in doubt, take the more urgent" is in the
 system prompt because under-triaging a no-heat call costs more than
