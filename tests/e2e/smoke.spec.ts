@@ -11,7 +11,7 @@ test("the demo page renders and a sample enables triage", async ({ page }) => {
   const submit = page.getByRole("button", { name: /triage the call/i });
   await expect(submit).toBeDisabled();
   await page.getByRole("button", { name: /9pm no-heat call/i }).click();
-  await expect(page.getByRole("textbox", { name: /voicemail transcript/i })).toHaveValue(/615 Cordell Ave/);
+  await expect(page.getByRole("textbox", { name: /voicemail transcript/i })).toHaveValue(/Marta Villegas/);
   await expect(submit).toBeEnabled();
 
   expect(errors).toEqual([]);
