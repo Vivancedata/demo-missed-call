@@ -24,7 +24,6 @@ Rules that are the product, not suggestions:
 
 type Payload = {
   text?: string;
-  image?: { media_type: "image/jpeg" | "image/png" | "image/webp"; data: string };
 };
 
 export async function POST(request: Request) {
@@ -50,47 +49,38 @@ export async function POST(request: Request) {
     );
   }
 
-  let payload: Payload;
+  let body: unknown;
   try {
-    payload = await request.json();
+    body = await request.json();
   } catch {
+    body = undefined;
+  }
+  // `null`, an array or a bare string is valid JSON but not a payload;
+  // without this check `payload.text` throws and the route 500s.
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return NextResponse.json({ error: "Body must be JSON. Send `{ \"text\": \"…\" }`." }, { status: 400 });
   }
+  const payload = body as Payload;
 
   if (typeof payload.text === "string" && payload.text.length > 20_000) {
     return NextResponse.json({ error: "Text too long (20k characters max). Shorten it and try again." }, { status: 413 });
   }
-  const hasText = typeof payload.text === "string" && payload.text.trim().length > 0;
-  const hasImage = Boolean(payload.image?.data && payload.image.media_type);
-  if (!hasText && !hasImage) {
+  // Transcripts only: the page never sends images, and this prompt is about
+  // voicemails, so an image would only be a second, unadvertised way to spend
+  // the API key.
+  if (typeof payload.text !== "string" || payload.text.trim().length === 0) {
     return NextResponse.json(
-      { error: "Provide `text` or `image` to extract from." },
+      { error: "Provide the voicemail transcript as `text`." },
       { status: 400 },
     );
   }
-  // ~7MB base64 ≈ 5MB image, Claude's per-image ceiling.
-  if (hasImage && payload.image!.data.length > 7_000_000) {
-    return NextResponse.json({ error: "Image too large (5\u00a0MB max). Use a smaller image." }, { status: 413 });
-  }
 
-  const content: Anthropic.ContentBlockParam[] = hasImage
-    ? [
-        {
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: payload.image!.media_type,
-            data: payload.image!.data,
-          },
-        },
-        { type: "text", text: "Extract this document into the record schema." },
-      ]
-    : [
-        {
-          type: "text",
-          text: `Extract this document into the record schema.\n\n<document>\n${payload.text}\n</document>`,
-        },
-      ];
+  const content: Anthropic.ContentBlockParam[] = [
+    {
+      type: "text",
+      text: `Triage this voicemail transcript.\n\n<transcript>\n${payload.text}\n</transcript>`,
+    },
+  ];
 
   const client = new Anthropic();
   try {
