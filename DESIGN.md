@@ -314,7 +314,13 @@ is non-empty, never collapsed behind a disclosure.
 
 ### Footer
 A card-coloured band with a hairline top edge, 14px grey copy, and one brand
-link back to vivancedata.com. It is the only route onward from the page.
+link back to vivancedata.com.
+
+### Book a Call
+Once a result is on screen, a hairline-topped block closes the result with one
+line of grey copy and a primary-filled "Book a call" link to
+`vivancedata.com/contact?utm_source=demo-missed-call`. It appears only after a
+result, never before: the visitor books after seeing the triage, not instead of it.
 
 ## Do's and Don'ts
 

@@ -85,6 +85,10 @@ describe("missed-call page", () => {
     expect(screen.getByText(EMERGENCY.suggested_reply)).toBeVisible();
     expect(screen.getByRole("heading", { name: /flagged, not guessed/i })).toBeVisible();
     expect(screen.getByText("Call triaged. The result is below.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /book a call/i })).toHaveAttribute(
+      "href",
+      "https://www.vivancedata.com/contact?utm_source=demo-missed-call",
+    );
   });
 
   it("shows dashes for missing details and no reply or flags when there are none", async () => {
